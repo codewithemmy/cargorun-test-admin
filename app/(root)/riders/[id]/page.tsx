@@ -1,13 +1,17 @@
+//riders/[id]/page.tsx
+
 "use client";
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import RiderOrderHistoryPage from "./riderHistory";
+import Link from "next/link";
+import RiderTransactionsPage from "./transactions/riderPage";
 
 type Rider = {
   _id: string;
   fullName: string;
   verifiedCredentials: string;
-  vehicle: {
+  vehicle?: {
     brand: string;
     plateNumber: string;
   };
@@ -21,7 +25,7 @@ type User =
       email?: string;
       token?: string;
       image?: string;
-      id?: string; // Added id as it is used in the code
+      id?: string;
     }
   | "";
 
@@ -29,6 +33,7 @@ const Page: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
   const filterId = pathname.split("/")[2];
+
   const [data, setData] = useState<Rider | null>(null);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -44,10 +49,10 @@ const Page: React.FC = () => {
         const result = await response.json();
 
         if (response.ok) {
-          const specificOrder = result.data.find(
+          const specificRider = result.data.find(
             (item: Rider) => item._id === filterId
           );
-          setData(specificOrder);
+          setData(specificRider || null);
         } else {
           setError(result.error || "Failed to fetch data");
         }
@@ -61,28 +66,34 @@ const Page: React.FC = () => {
 
   const updateVerification = async (verificationString: string) => {
     const userDataString = localStorage.getItem("cargorun_userData");
+
     if (userDataString) {
       const parsedObject = JSON.parse(userDataString) as User;
       setDetails(parsedObject);
-      if (parsedObject !== "" && "token" in parsedObject) {
+
+      if (parsedObject && "token" in parsedObject) {
         setToken(parsedObject.token ?? "");
       }
-    } else setMessage("You are not authorized to perform this action");
+    } else {
+      setMessage("You are not authorized to perform this action");
+      return;
+    }
+
     const res = await fetch(
       `https://cargo-run-d699d9f38fb5.herokuapp.com/api/v1/rider/credential/${filterId}`,
       {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ verifiedCredentials: verificationString }),
       }
     );
 
-    if (res.ok) return setRefire(true);
+    if (res.ok) setRefire((prev) => !prev);
+    else setMessage("Failed to update verification");
   };
-
-  console.log(message);
 
   return (
     <div className="w-full bg-white min-h-screen mt-6 p-6">
@@ -91,6 +102,7 @@ const Page: React.FC = () => {
           <img src="/icons/arrow-left.svg" height={20} width={20} alt="back" />
         </button>
       </div>
+
       <div className="h-full flex flex-col mt-4 items-center">
         <img
           src="/images/rider_picture.png"
@@ -98,22 +110,27 @@ const Page: React.FC = () => {
           height={139}
           width={139}
         />
+
         <h1 className="font-semibold text-2xl mt-2 flex items-center">
-          {data?.fullName}{" "}
-          {data?.verifiedCredentials == "verified" ? (
+          {data?.fullName}
+          {data?.verifiedCredentials === "verified" ? (
             <CircleCheckIcon className="h-6 w-6 text-primary-green ml-2" />
           ) : (
-            <p className="italic ml-2 text-sm italicize font-thin">
-              not verified
-            </p>
+            <p className="italic ml-2 text-sm font-thin">not verified</p>
           )}
         </h1>
-        <p className="mt-2">
-          <span className="text-xl font-thin">{data?.vehicle?.brand}</span> --{" "}
-          <span className="text-sm font-semibold">
-            {data?.vehicle.plateNumber}
-          </span>
-        </p>
+
+        {data?.vehicle ? (
+          <p className="mt-2">
+            <span className="text-xl font-thin">{data.vehicle.brand}</span> --{" "}
+            <span className="text-sm font-semibold">
+              {data.vehicle.plateNumber}
+            </span>
+          </p>
+        ) : (
+          <p className="mt-2 text-gray-500 italic">No vehicle data</p>
+        )}
+
         <p>{data?.email}</p>
 
         <img
@@ -140,6 +157,7 @@ const Page: React.FC = () => {
             Cancel Verification
           </button>
         </div>
+
         <div className="mt-10 items-center">
           <h1 className="text-xl font-semibold text-primary-blue text-center mb-4">
             Contact Details
@@ -157,13 +175,25 @@ const Page: React.FC = () => {
           </div>
         </div>
       </div>
+      <br />
+      <hr />
+
+      <div className="mb-4 mt-4 bg-white">
+        <h1 className="uppercase pl-10 font-bold">
+          {data?.fullName} ORDER HISTORY
+        </h1>
+
+        {/* Rider History Component */}
+
+        <RiderTransactionsPage />
+      </div>
     </div>
   );
 };
 
 export default Page;
 
-function CircleCheckIcon(props: any) {
+function CircleCheckIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       {...props}

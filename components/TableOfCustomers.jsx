@@ -1,18 +1,41 @@
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation"
-import { shortenString } from "@/utils"
+import { useState } from "react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
+import { useRouter } from "next/navigation";
+import { shortenString } from "@/utils";
 
-export default function Component({data}) {
-
+export default function Component({ data }) {
   const router = useRouter();
+  const [search, setSearch] = useState("");
+
+  // Filter customers
+  const filteredData = data?.filter(
+    (item) =>
+      item.fullName?.toLowerCase().includes(search.toLowerCase()) ||
+      item.email?.toLowerCase().includes(search.toLowerCase()) ||
+      item.phone?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <Card className="w-full mx-auto mt-8">
-      <CardHeader>
+      <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <CardTitle>All Customers</CardTitle>
+        <input
+          type="text"
+          placeholder="Search by name, email, or phone..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="border border-gray-300 rounded-lg px-3 py-2 w-full md:w-1/3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
       </CardHeader>
+
       <CardContent>
         <Table>
           <TableHeader>
@@ -25,25 +48,46 @@ export default function Component({data}) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {
-                data ? data.map((item)=>(
-                <TableRow key={item._id}>
-                    <TableCell className="font-medium text-blue-500"><span className='text-primary-blue'>{shortenString(item._id)}</span></TableCell>
-                    <TableCell>{item.fullName}</TableCell>
-                    <TableCell>{item.email}</TableCell>
-                    <TableCell>{item.phone}</TableCell>
-                    <TableCell>
-                    <   img src="/icons/options.svg" alt="options" height={20}width={20} />
-                    </TableCell>
+            {filteredData && filteredData.length > 0 ? (
+              filteredData.map((item) => (
+                <TableRow
+                  key={item._id}
+                  className="cursor-pointer"
+                  style={{ borderBottom: "1px solid #e0e0e0" }}
+                  onClick={() =>
+                    router.push(`/customers/${item._id}`, { scroll: false })
+                  }
+                >
+                  <TableCell className="font-medium text-blue-500">
+                    <span className="text-primary-blue">
+                      {shortenString(item._id)}
+                    </span>
+                  </TableCell>
+                  <TableCell>{item.fullName}</TableCell>
+                  <TableCell>{item.email}</TableCell>
+                  <TableCell>{item.phone}</TableCell>
+                  <TableCell>
+                    <img
+                      src="/icons/options.svg"
+                      alt="options"
+                      height={20}
+                      width={20}
+                    />
+                  </TableCell>
                 </TableRow>
-
-                ))
-  
-                : <div>Fetching user data...</div>
-            }
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-4">
+                  {data
+                    ? "No matching customers found"
+                    : "Fetching user data..."}
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>
     </Card>
-  )
+  );
 }
